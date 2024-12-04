@@ -1,0 +1,170 @@
+---
+title: "Class 5: Data Visual with ggplot"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+Ways to make figures in R: 
+One of them that **comes with R** is the `plot()` function.
+
+```{r}
+plot(cars)
+```
+
+A popular package for plots and figures is called **ggplot2**.
+
+Before I can use an add on package, I must install with the `install.packages()` function. The package name should be in quotes in this command. 
+
+To use the package I need to load it with the `library()` function.
+
+```{r}
+#install.packages("ggplot2")
+
+library("ggplot2")
+```
+
+```{r}
+ggplot(cars) +
+  aes(x=speed, y=dist) +
+  geom_point() 
+```
+
+For "simple" graphs like this one, base R code is shorter than ggplot code. 
+
+Let's fit a model and show it on the plot. 
+
+```{r}
+ggplot(cars) +
+  aes(x=speed, y=dist) +
+  geom_point() +
+  geom_smooth() 
+```
+
+Every ggplot has at least 3 layers.
+
+- **data**: data.frame with the numbers you want to plot
+- **aesthetics**: mapping of the columns in your data frame to your plot
+    - e.g. size of points, position, line type, line width, color, shape of points
+-**geoms**: there are many of these, but the basics are `geom_point()`, `geom_line()` and `geom_col()`
+
+```{r}
+head(mtcars) 
+```
+
+Make a ggplot of the `mtcars` data using `mgp` vs `disp` and set the size of the points to the `hp` and set the color to `am`.
+
+```{r}
+ggplot(mtcars) +
+  aes(x=mpg, y=disp, size=hp, col= am) +
+  geom_point() 
+
+```
+
+Now, color all the points blue. 
+
+```{r}
+ggplot(mtcars) +
+  aes(x=mpg, y=disp, size=hp) +
+  geom_point(colour="blue")
+```
+
+
+Make a gene expression plot that colors gene expression changes. 
+
+```{r}
+url <- "https://bioboot.github.io/bimm143_S20/class-material/up_down_expression.txt"
+genes <- read.delim(url)
+head(genes)
+
+nrow(genes)
+colnames(genes)
+ncol(genes)
+table(genes$State)
+table(genes$State)/nrow(genes) *100
+```
+
+The functions `nrow()`, `ncol()`, and `table()` are helpful for summarizing large data frames. 
+
+```{r}
+ggplot(genes) +
+  aes(x=Condition1, y=Condition2, col=State) + 
+  geom_point() +
+  scale_color_manual(values=c("blue", "grey", "red")) +
+  labs(title="Gene Expression Changes Upon Drug Treatment", x="Control", y="Drug Treatment") 
+```
+
+
+
+```{r}
+url <- "https://raw.githubusercontent.com/jennybc/gapminder/master/inst/extdata/gapminder.tsv"
+gapminder <- read.delim(url)
+head(gapminder)
+```
+
+```{r}
+library(dplyr)
+
+gapminder_2007 <- gapminder %>% filter(year==2007)
+gapminder_1957 <- gapminder %>% filter(year==1957)
+```
+
+Make a plot of the 2007 data.
+
+```{r}
+ggplot(gapminder_2007) + 
+  aes(x=gdpPercap, y=lifeExp, size= pop) +
+  geom_point(alpha=0.5) +
+  scale_size_area(max_size=10)
+```
+
+Make a plot of the 1957 data. 
+
+```{r}
+ggplot(gapminder_1957) +
+  aes(x=gdpPercap, y=lifeExp, size= pop, col= continent) +
+  geom_point(alpha=0.7) +
+  scale_size_area(max_size=15)
+```
+
+Make a plot of both 2007 and 1957 data. 
+
+```{r}
+gapminder_1957_2007 <- gapminder %>% filter(year==1957 | year==2007)
+ggplot(gapminder_1957_2007) + 
+  geom_point(aes(x = gdpPercap, y = lifeExp, color=continent,
+                 size = pop), alpha=0.7) + 
+  scale_size_area(max_size = 10) +
+  facet_wrap(~year)
+```
+
+
+You can use `geom_col()` to create bar charts. 
+
+```{r}
+gapminder_top5 <- gapminder %>% 
+  filter(year==2007) %>% 
+  arrange(desc(pop)) %>% 
+  top_n(5, pop)
+
+gapminder_top5
+```
+
+You can color by numeric values and get a gradient or categorical and get different colors for each category. 
+
+```{r}
+ggplot(gapminder_top5) + 
+  aes(x = country, y = pop, fill=gdpPercap) +
+  geom_col()
+```
+
+
+```{r}
+ggplot(gapminder_top5) + 
+  aes(x=reorder(country, -pop), y = pop, fill=country) +
+  geom_col(col="grey30") +
+  guides(fill="none")
+
+ggsave("top5countrygraph.pdf")
+```
+
+Can save plots from ggplot to the computer using `ggsave("")`. 

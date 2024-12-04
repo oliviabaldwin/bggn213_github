@@ -1,0 +1,89 @@
+---
+title: "Class 6 Homework: Writing a Function"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+Create a function to improve this code. 
+
+```{r}
+#original code 
+library(bio3d)
+
+s1 <- read.pdb("4AKE") # kinase with drug
+s2 <- read.pdb("1AKE") # kinase no drug
+s3 <- read.pdb("1E4Y") # kinase with drug
+
+#this reads the pdb files
+```
+
+
+```{r}
+s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+s3.chainA <- trim.pdb(s3, chain="A", elety="CA")
+
+#this one creates a data frame that trims does the file to just chain A and elety "CA" for each of the 
+```
+
+
+```{r}
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+
+#this one parses out just the "b" column from the data frame and assigns it to a list
+```
+
+
+```{r}
+plotb3(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor")
+plotb3(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor")
+plotb3(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+
+#this creates a line graph of the "b" column against "sse=__.chainA" and labels the y axis
+```
+
+
+**Lets combine these into a single function.**
+
+**inputs** and **explanation of code**
+
+```{r}
+plot_b_atoms <- function(name){
+  
+  library(bio3d)
+  s <- read.pdb(name) 
+  #reads the file based on the protein id
+  
+  s.chainA <- trim.pdb(s, chain="A", elety="CA") 
+  #trims the data frame to just include the A chain data with elety of "CA"
+  
+  s.b <- s.chainA$atom$b 
+  #this sections out just the "b" column of the new data frame
+  
+  final_plot <- plotb3(s.b, sse=s.chainA, typ="l", ylab="Bfactor") 
+  #this plots a line graph of the b column data
+  
+  return(final_plot) 
+  # this returns the final plot as the output of the function
+  
+}
+
+#the input "name" refers to the 4 letter protein id from the bio3d database
+
+#each line in the function performs the same thing as each "chunk" in the original code, now you just have to specify the protein name in the beginning
+```
+
+**outputs** and **how to use the function**
+
+```{r}
+plot_b_atoms("4AKE")
+plot_b_atoms("1AKE")
+plot_b_atoms("1E4Y")
+
+#to use this function, just input the 4 letter id from the bio3d data base
+
+#this will output a plot of the "b" atoms from the A chain of the protein input
+```
+
