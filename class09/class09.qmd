@@ -1,0 +1,238 @@
+---
+title: "Class 9: Halloween Mini Project"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+```{r}
+candy <- read.csv("candy-data.csv", row.names = 1) 
+head(candy)
+```
+
+```{r}
+dim(candy)
+table(candy$fruity)
+```
+
+>Q1: There are 85 different types of candy (rows)
+
+>Q2: There are 38 "fruity" candies.
+
+
+```{r}
+candy["Kit Kat", ]$winpercent
+candy["Tootsie Roll Snack Bars", ]$winpercent
+```
+
+>Q3: I like kit kats and their win percentage is 76.77% 
+
+>Q4: Kit kat has a win percentage of 76.77%
+
+>Q5: Tootsie roll snack bars have a win percentage of 49.65%
+
+
+```{r}
+library("skimr")
+skim(candy)
+```
+
+>Q6: Win percentage seems to be on a different scale because its standard deviation is about 14, but all of the others are less than one. 
+
+>Q7: The "0" in the chocolate column means there is no chocolate in the candy and the "1" means it contains chocolate. 
+
+>Q8: 
+
+```{r}
+hist(candy$winpercent)
+```
+
+
+>Q9: The distribution of the win percentage is not symmetrical. 
+
+>Q10: The center of the distribution is below 50%.
+
+```{r}
+chocolate_winperc <- candy$winpercent[as.logical(candy$chocolate)]
+mean(chocolate_winperc)
+
+fruity_winperc <- candy$winpercent[as.logical(candy$fruity)]
+mean(fruity_winperc)
+```
+
+>Q11: On average the chocolate win percentage is higher than the fruity. 
+
+```{r}
+t.test(chocolate_winperc, fruity_winperc)
+```
+
+>Q12: According to a basic, two sample t-test, they are statistically significant with a p-value of 2.87e-8. 
+
+```{r}
+#lets try dplyr for this one
+library(dplyr)
+```
+
+```{r}
+candy |>
+  arrange(winpercent) |>
+  head(5)
+```
+
+```{r}
+candy |>
+  arrange(desc(winpercent)) |>
+  head(5)
+```
+
+>Q13: The bottom 5 are: jawbusters, super bubble, chiclets, boston baked beans, and nik l nip 
+
+>Q14: The top 5 are: reese's peanut butter cups, reese's miniatures, twix, kit kat, and snickers
+
+
+>Q15: 
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(candy) +
+  aes(winpercent, rownames(candy)) +
+  geom_col()
+```
+
+```{r}
+ggplot(candy) +
+  aes(winpercent, reorder(rownames(candy), winpercent)) +
+  geom_col()
+```
+
+
+```{r}
+my_cols=rep("black", nrow(candy))
+my_cols[as.logical(candy$chocolate)] = "chocolate"
+my_cols[as.logical(candy$bar)] = "brown"
+my_cols[as.logical(candy$fruity)] = "hotpink"
+my_cols[rownames(candy)=="Kit Kat"] = "lightblue"
+```
+
+```{r}
+ggplot(candy) +
+  aes(winpercent, reorder(rownames(candy), winpercent)) +
+  geom_col(fill=my_cols)
+```
+
+>Q17: The worst ranked chocolate candy is Sixlets.
+
+>Q18: The best ranked fruity candy is Starbursts. 
+
+
+```{r}
+library(ggrepel)
+```
+
+```{r}
+ggplot(candy) +
+  aes(winpercent, pricepercent, label=rownames(candy)) +
+  geom_point(col=my_cols) +
+  geom_text_repel(col=my_cols, size=2.5, max.overlaps = 16)
+
+#changed the size and overlaps so that all could be included with labels
+#geom_text_repel is better than geom_text for lots of points because it reduces overlaps of words
+```
+
+>Q19: The highest win percentage for the lowest price is probably reese's minis because it has a win percent over 80%, but is close to the 25% price percentage, which is fairly low.
+
+>Q20: The top 5 most expensive are: Nik l nip, ring pops, smarties, hershey krackel and hershey milk chocolate. The nik l nip is the least popular. 
+
+```{r}
+candy |>
+  arrange(desc(pricepercent)) |>
+  head(5)
+```
+
+>Q21: 
+
+```{r}
+ggplot(candy) +
+  aes(pricepercent, reorder(rownames(candy), pricepercent)) +
+  geom_col()
+```
+
+```{r}
+ggplot(candy) +
+  aes(pricepercent, reorder(rownames(candy), pricepercent)) +
+  geom_segment(aes(yend=reorder(rownames(candy), pricepercent), 
+                   xend=0)) +
+  geom_point(col=my_cols)
+```
+
+
+```{r}
+library(corrplot) 
+```
+
+```{r}
+cij <- cor(candy) 
+corrplot(cij)
+```
+
+>Q22: The most anti-correlated would be chocolate and fruity (not a lot of candy is both). The pluribus and bar are also anti-correlated (which makes sense because most of the time you don't get more than one bar of candy per serving). I can tell by the size and redness of the dots. 
+
+>Q23: Chocolate and winpercent are very correlated. Chocolate and bar are also very correlated. Same with chocolate and pricepercent, as well as bar and pricepercent. 
+
+
+```{r}
+noscale_pca <- prcomp(candy, scale=FALSE)
+pca <- prcomp(candy, scale=TRUE)
+
+summary(noscale_pca)
+summary(pca)
+```
+
+
+```{r}
+#change shape and colors
+plot(pca$x[,1:2], col=my_cols, pch=17)
+```
+
+
+```{r}
+candy_data <- cbind(candy, pca$x[,1:3]) 
+head(candy_data)
+```
+
+```{r}
+ggplot(candy_data) +
+  aes(PC1, PC2, size=winpercent/100, text=rownames(candy_data), 
+      label=rownames(candy_data)) +
+  geom_point(col=my_cols)
+```
+
+
+```{r}
+candy_plot <- ggplot(candy_data) +
+  aes(PC1, PC2, 
+      size=winpercent/100, 
+      text=rownames(candy_data), 
+      label=rownames(candy_data)) +
+  geom_point(col=my_cols) +
+  geom_text_repel(size=2.5, col=my_cols, max.overlaps = 20) +
+  labs(title="Halloween Candy PCA",
+       subtitle = "Colored by type: chocolate (light brown), bar (dark brown), fruity (pink), other (black)",
+       caption= "data from 538")
+
+candy_plot
+```
+
+```{r}
+#library(plotly)
+#ggplotly(candy_plot)
+```
+
+```{r}
+barplot(pca$rotation[,1], las = 2, ylab="PC1 Contribution") 
+```
+
+>Q24: chocolate, fruity, and bar are the most "picked up." This makes sense to me because those were the categories that showed the largest pos/neg correlations on the correlation graph. So, they it makes sense that they are strongly variable. 
+
