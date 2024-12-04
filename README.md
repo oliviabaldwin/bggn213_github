@@ -6,4 +6,4 @@ My classwork for [BGGN213](https://bioboot.github.io/bggn213_F24/) at UC San Die
 - Class 6: [R Functions](https://github.com/oliviabaldwin/bggn213_github/blob/main/class06/class06.qmd)
 - Class 7: [Into to Machine Learning](https://github.com/oliviabaldwin/bggn213_github/blob/main/class07/class07.qmd) 
 - Class 8: [Unsupervised Learning Project](https://github.com/oliviabaldwin/bggn213_github/blob/main/class08/class08.qmd)
-- Class 9: [Candy Mini Project with PCA Analysis]()
+- Class 9: [Candy Mini Project with PCA Analysis](https://github.com/oliviabaldwin/bggn213_github/blob/main/class09/class09.qmd) 
