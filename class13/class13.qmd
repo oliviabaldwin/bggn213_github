@@ -1,0 +1,243 @@
+---
+title: "Class 13: RNA Seq Analysis"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+Today we will work with bulk RNASeq data from Himes et al. where airway smooth muscle (asm) cells were treated with dexamethasone (dex), a glucocorticoid steriod. 
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", row.names = 1)
+meta <- read.csv("airway_metadata.csv") 
+
+head(counts)
+head(meta) 
+```
+
+```{r}
+dim(counts)
+table(meta$dex)
+```
+
+>Q1: There are 38,694 genes in the `counts` data. 
+
+>Q2: There are 4 control samples and 4 treated samples. 
+
+
+Want to compare control vs treated to see the drug's affect.
+
+1. Let's split the counts into `control.counts` and `treated.counts`. 
+
+```{r}
+meta$id == colnames(counts)
+```
+
+Syntax for [] is [rows, columns]
+```{r}
+control <- meta[meta$dex=="control",] 
+control.counts <- counts[,control$id] 
+```
+
+```{r}
+treated <- meta[meta$dex == "treated",] 
+treated.counts <- counts[,treated$id]
+```
+
+
+2. Lets calculate the mean counts per gene for "control" and "treated" - then we can compare. 
+
+I can use the `apply` function to apply `mean` over the rows or columns of a data frame. 
+
+```{r}
+control.mean <- apply(control.counts, 1, mean) 
+head(control.mean) 
+```
+
+```{r}
+treated.mean <- apply(treated.counts, 1, mean) 
+head(treated.mean)
+```
+
+Put these mean counts together into one df for ease. 
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+plot(meancounts) 
+```
+
+Let's log transform it so we can see more of our data points. 
+
+```{r}
+plot(meancounts, log="xy") 
+```
+
+We most often use log2 transforms here because it makes the math easier. 
+
+This is because the log2 of 1 is zero (no change). A 1 would mean a "doubling" of the amounts. 
+
+```{r}
+#log2(treated/control)
+log2(10/10)
+log2(10/20)
+log2(20/10) 
+log2(40/10) 
+```
+
+Let's calculate the log2 fold change and add it to our table `meancounts`. 
+
+```{r}
+meancounts$log2fc <- log2(meancounts$treated.mean/meancounts$control.mean)
+head(meancounts) 
+```
+
+Filter out all of the 0 counts from the `meancounts` data. 
+```{r}
+to.rm <- rowSums(meancounts[,1:2] == 0) > 0
+mycounts <- meancounts[!to.rm, ]
+#the `!` means opposite of 
+
+nrow(mycounts) 
+#this shows that there are only about 22000 genes left after all 0 counts removed 
+```
+
+>Q: How many down regulared genes do we have at the common log2 fold change value of below -2? **367**
+
+```{r}
+down <- mycounts$log2fc < -2
+sum(down)
+```
+
+>Q: How many up regulated genes do we have at log2 of higher than +2? **250** 
+
+```{r}
+up <- mycounts$log2fc > 2
+sum(up)
+```
+
+Do we trust these results? 
+Not yet...
+
+We are missing the stats!!
+
+##DESeq Analysis 
+```{r}
+#| message: false
+library(DESeq2)
+```
+
+DESeq, like many BioConductor packages, wants our input data in a very specific format. 
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = counts, 
+                       colData = meta, 
+                       design = ~dex) 
+```
+
+The main function in DESeq2 is called `DESeq()`.
+```{r}
+dds <- DESeq(dds)
+res <- results(dds) 
+```
+
+```{r}
+res
+#gives base mean, log2 change, log fold change standard error, stat, p-value and adjusted p-value
+```
+
+A common overview figure plots the log2 fold change vs the p-value (volcano plot). 
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+abline(v=c(-2, 2), col="orange") 
+abline(h=-log(0.005), col="orange") 
+
+#the `-log` flips the log axis to put the values of interest towards the top 
+```
+
+```{r}
+mycols <- rep("grey", nrow(res))
+mycols[res$log2FoldChange > 2] <- "blue"
+mycols[res$log2FoldChange < -2] <- "red"
+mycols[res$padj > 0.005] <- "grey"
+
+plot(res$log2FoldChange, -log(res$padj), col=mycols)
+abline(v=c(-2, 2), col="orange") 
+abline(h=-log(0.005), col="orange") 
+```
+
+Save our results from DESeq: 
+
+```{r}
+write.csv(res, file="myresults_class13.csv")
+```
+
+
+## Gene Annotation
+
+```{r}
+head(res)
+```
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db") 
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db, keys=row.names(res), keytype="ENSEMBL", column="SYMBOL", multiVals="first")
+
+#the `multiVals` is for when one thing in one database maps to multiple in another, so you decide what you want to take (first, second, all, etc.)
+```
+
+```{r}
+head(res) 
+```
+
+
+## Pathway Analysis 
+
+```{r}
+library(pathview) 
+library(gage)
+library(gageData)
+data("kegg.sets.hs") 
+```
+
+KEGG take ENTREZ Ids. So I need to convert to the Entrez ID from the Ensembl. 
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db, keys=row.names(res), keytype="ENSEMBL", column="ENTREZID", multiVals="first")
+```
+
+```{r}
+head(res) 
+```
+
+The `gage()` function will check to see if the Entrez Ids overlap with known KEGG pathways. 
+
+```{r}
+#gage wants the vector of importance (if doing it for real I would filter out bad padj values first) 
+
+foldchanges <- res$log2FoldChange
+names(foldchanges) <- res$entrez
+#this will change the ENS... names to the entrez names
+
+keggres <- gage(foldchanges, gsets=kegg.sets.hs) 
+```
+
+```{r}
+attributes(keggres) 
+```
+
+```{r}
+head(keggres$less, 3)
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa05310") 
+```
+
+![A oathway figure](hsa05310.pathview.png) 
