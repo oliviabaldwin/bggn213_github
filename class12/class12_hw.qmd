@@ -1,0 +1,33 @@
+---
+title: "Class 12 Homework: Plotting Gene Expression"
+author: "Olivia Baldwin"
+format: pdf
+---
+## Read the table into R
+
+```{r}
+gene_exp_table <- read.table("rs8067378.txt") 
+head(gene_exp_table) 
+summary(gene_exp_table) 
+
+```
+
+```{r}
+table(gene_exp_table$geno)
+```
+
+## Create a boxplot. 
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(gene_exp_table) +
+  aes(geno, exp, fill=geno) +
+  geom_boxplot() +
+  labs(x="Genotype", y="Expression", title= "Expression by Genotype")  
+```
+
+>Q14: A/A seems to have a higher expression than G/G based on the boxplot. The SNP does seem to affect expression as there is large difference between the two homozygous alleles.  
+

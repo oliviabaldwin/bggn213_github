@@ -1,0 +1,250 @@
+---
+title: "Class 11: Structural Bioinformatics Part 2"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+Today, before delving into structure prediction with AlphaFold we will finish off our previous Lab 10 comparative structure analysis section. 
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+id <- "1ake_A" 
+aa <- get.seq(id)
+print(aa)
+```
+
+```{r}
+b <- blast.pdb(aa) 
+```
+
+```{r}
+attributes(b)
+```
+
+```{r}
+head(b$hit.tbl) 
+```
+
+```{r}
+hits <- plot(b)
+```
+
+```{r}
+attributes(hits)
+```
+
+Top hits that we like from our blast results: 
+
+```{r}
+hits$pdb.id
+```
+
+```{r}
+#downloads the pdb files from our top hits in the blast result
+
+files <- get.pdb(hits$pdb.id, path="pdbs", plot=TRUE, gzip=TRUE) 
+```
+
+I have now downloaded all ADK structures in the PDB database but viewing them is difficult as they need to be aligned and superposed. 
+
+I am going to install BiocManager package from CRAN. Then I can use `BiocManager::install()` to install any bioconductor package. 
+
+```{r}
+#align pdbs so they are superposed (all turned/put in the same view angle)
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+
+```{r}
+pdbs
+```
+
+##Prinicpal Component Analysis 
+
+```{r}
+pc <- pca(pdbs)
+plot(pc)
+```
+
+```{r}
+plot(pc, pc.axes = c(1:2)) 
+```
+
+To examine in more detail what PC1 (or any PC) is capturing here we can plot the loadings or make a movie (trajectory) of moving along PC1. 
+
+```{r}
+#"make trajectory" 
+
+mktrj(pc, pc=1, file="pc1.pdb") 
+```
+
+
+## Analysis of Alpha Fold Results
+
+```{r}
+results_dir <- "HIVdimertest_23119" 
+
+# File names for all PDB models
+pdb_files <- list.files(path=results_dir,
+                        pattern="*.pdb",
+                        full.names = TRUE)
+
+# Print our PDB file names
+basename(pdb_files)
+```
+
+```{r}
+HIV_pdbs <- pdbaln(pdb_files, fit=TRUE, exefile="msa")
+```
+
+```{r}
+HIV_pdbs
+```
+
+```{r}
+rd <- rmsd(HIV_pdbs, fit=T)
+
+range(rd)
+```
+
+```{r}
+library(pheatmap)
+
+colnames(rd) <- paste0("m",1:5)
+rownames(rd) <- paste0("m",1:5)
+pheatmap(rd)
+```
+
+```{r}
+ref_pdb <- read.pdb("1hsg")
+```
+
+```{r}
+plotb3(HIV_pdbs$b[1,], typ="l", lwd=2, sse=ref_pdb)
+points(HIV_pdbs$b[2,], typ="l", col="red")
+points(HIV_pdbs$b[3,], typ="l", col="blue")
+points(HIV_pdbs$b[4,], typ="l", col="darkgreen")
+points(HIV_pdbs$b[5,], typ="l", col="orange")
+abline(v=100, col="gray")
+```
+
+```{r}
+core <- core.find(HIV_pdbs)
+```
+
+```{r}
+core.inds <- print(core, vol=0.5)
+```
+
+```{r}
+xyz <- pdbfit(HIV_pdbs, core.inds, outpath="corefit_structures")
+```
+
+```{r}
+rf <- rmsf(xyz)
+
+plotb3(rf, sse=ref_pdb)
+abline(v=100, col="red", ylab="RMSF")
+```
+
+
+![Colored by uncertainty](HIVdimertest_uncertainty.png)
+
+## Predicting Alignment Error
+
+```{r}
+library(jsonlite)
+```
+
+```{r}
+pae_files <- list.files(path=results_dir,
+                        pattern=".*model.*\\.json",
+                        full.names = TRUE)
+```
+
+```{r}
+pae1 <- read_json(pae_files[1],simplifyVector = TRUE)
+pae5 <- read_json(pae_files[5],simplifyVector = TRUE)
+
+attributes(pae1)
+```
+
+```{r}
+head(pae1$plddt) 
+
+pae1$max_pae
+pae5$max_pae
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)")
+```
+
+
+```{r}
+plot.dmat(pae5$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+```{r}
+plot.dmat(pae1$pae, 
+          xlab="Residue Position (i)",
+          ylab="Residue Position (j)",
+          grid.col = "black",
+          zlim=c(0,30))
+```
+
+The pae1 seems to be better than the pae5. 
+
+
+```{r}
+aln_file <- list.files(path=results_dir,
+                       pattern=".a3m$",
+                        full.names = TRUE)
+aln_file
+```
+
+```{r}
+aln <- read.fasta(aln_file[1], to.upper = TRUE)
+```
+
+```{r}
+attributes(aln)
+dim(aln$ali)
+```
+
+Scores residue conservation: 
+
+```{r}
+sim <- conserv(aln)
+```
+
+```{r}
+plotb3(sim[1:99], sse=trim.pdb(ref_pdb, chain="A"),
+       ylab="Conservation Score") 
+```
+
+Generate a consensus to highlight conserved residues. 
+
+```{r}
+con <- consensus(aln, cutoff = 0.9)
+con$seq
+```
+
+Creates a file for final visualization: 
+
+```{r}
+m1.pdb <- read.pdb(pdb_files[1])
+occ <- vec2resno(c(sim[1:99], sim[1:99]), m1.pdb$atom$resno)
+write.pdb(m1.pdb, o=occ, file="m1_conserv.pdb")
+```
+
+![Colored by occupancy](M1_CONSERV.PDB.png)
+

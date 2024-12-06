@@ -1,0 +1,134 @@
+---
+title: "Class 10: PDB and Structural Bioinformatics"
+author: "Olivia Baldwin"
+format: pdf
+---
+
+```{r}
+pdb_data <- read.csv("data_export_summary.csv", row.names = 1)
+head(pdb_data)
+```
+
+```{r}
+#create a function
+comma_number <- function(x){
+  x <- gsub(",", "", x)
+  x <- as.numeric(x)
+  
+  return(x)
+}
+```
+
+```{r}
+x.ray_num <- comma_number(pdb_data$X.ray)
+x.ray_tot <- sum(x.ray_num)
+
+total_sum <- sum(comma_number(pdb_data$Total))
+```
+
+The `apply()` function can take any function and apply it over rows or cols. 
+
+```{r}
+colSums(apply(pdb_data, 2, comma_number)) / total_sum
+
+```
+
+```{r}
+#can also use this package that will read it in as a numeric and take out commas for you
+
+library(readr)
+pdb_csv <- read_csv("data_export_summary.csv")
+```
+
+>Q1: X ray solves 83.25% and EM solves 10.23% for a total of 93.48%. 
+
+```{r}
+sum(comma_number(pdb_data[1:3,7])) / total_sum
+```
+
+>Q2: 97.9% are protein.
+
+
+##Using Mol*
+
+![My first image from Mol-star](1HSG.png) 
+
+![Protein with molecular surface overlay](1HSG-1.png)
+
+
+![Protein with important water and aspartic acid residues](1HSG-2.png)
+
+>Q4: The hydrogens do not show up because they are too small. 
+
+>Q5: Water molecule (HOH) 308
+
+
+## Bio3D package for Structural Bioinformatics 
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+pdb <- read.pdb("1HSG")
+summary(pdb)
+```
+
+```{r}
+attributes(pdb)
+```
+
+```{r}
+head(pdb$atom) 
+```
+
+```{r}
+pdbseq(pdb)[25]
+```
+
+>Q7: There are 198 amino acid residues 
+
+>Q8: The non-protein residues are the waters and the MK1 (drug)
+
+>Q9: 2 protein chains
+
+## Functional dynamics prediction 
+
+```{r}
+#library(r3dmol)
+#source("https://tinyurl.com/viewpdb")
+```
+
+```{r}
+#view.pdb(pdb, backgroundColor = "lightpink")
+```
+
+```{r}
+#view.pdb(adk, backgroundColor = "lightgrey")
+```
+
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+```{r}
+#flexibility prediction
+flex_pred <- nma(adk) 
+```
+
+```{r}
+plot(flex_pred)
+```
+
+```{r}
+mktrj(flex_pred, pdb=adk, file= "adk-m7.pdb")
+
+#view the file this outputs in Mol-star by opening the file created by `mktrj()`
+#if you don't add the "pdb" argument, the sequence will not show up in Mol-star correctly 
+```
+
+
+
+
